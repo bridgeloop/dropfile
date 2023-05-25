@@ -1,4 +1,4 @@
-use std::{fs::{self, File}, io::{self, ErrorKind, IoSlice, Seek, Write}, ops::{Deref, DerefMut}, path::Path};
+use std::{fs::{self, File}, io::{self, ErrorKind, IoSlice, IoSliceMut, Seek, SeekFrom, Read, Write}, ops::{Deref, DerefMut}, path::Path};
 
 pub struct DropFile {
 	path: Box<Path>,
@@ -34,14 +34,14 @@ impl DropFile {
 	}
 
 	pub fn trunc(&mut self) -> Result<(), &'static str> {
-		let file = self.file.as_mut().unwrap();
+		let file = self.deref_mut();
 		file.rewind().map_err(|_| "failed to rewind file")?;
 		file.set_len(0).map_err(|_| "failed to truncate file")?;
 
 		return Ok(());
 	}
 	pub fn trunc_to_cursor(&mut self) -> Result<(), &'static str> {
-		let file = self.file.as_mut().unwrap();
+		let file = self.deref_mut();
 		let cursor = file.stream_position().map_err(|_| "failed to get cursor position")?;
 		file.set_len(cursor).map_err(|_| "failed to truncate file")?;
 		return Ok(());
@@ -70,6 +70,28 @@ impl DerefMut for DropFile {
 	}
 }
 
+impl Seek for DropFile {
+	fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
+		return self.deref_mut().seek(pos);
+	}
+}
+impl Read for DropFile {
+	fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+		return self.deref_mut().read(buf);
+	}
+
+	fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+		return self.deref_mut().read_vectored(bufs);
+	}
+
+	fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+		return self.deref_mut().read_to_end(buf);
+	}
+
+	fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
+		return self.deref_mut().read_to_string(buf);
+	}
+}
 impl Write for DropFile {
 	fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
 		self.written_to = true;
