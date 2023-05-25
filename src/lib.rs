@@ -94,18 +94,24 @@ impl Read for DropFile {
 }
 impl Write for DropFile {
 	fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-		self.written_to = true;
-		return self.deref_mut().write(buf);
+		return self.deref_mut().write(buf).map(|w| {
+			self.written_to = true;
+			return w;
+		});
 	}
 
 	fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-		self.written_to = true;
-		return self.deref_mut().write_vectored(bufs);
+		return self.deref_mut().write_vectored(bufs).map(|w| {
+			self.written_to = true;
+			return w;
+		});
 	}
 
 	fn flush(&mut self) -> io::Result<()> {
-		self.written_to = true;
-		return self.deref_mut().flush();
+		return self.deref_mut().flush().map(|_| {
+			self.written_to = true;
+			return ();
+		});
 	}
 }
 
