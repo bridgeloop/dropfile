@@ -34,17 +34,24 @@ impl DropFile {
 	}
 
 	pub fn trunc(&mut self) -> Result<(), &'static str> {
-		let file = self.deref_mut();
-		file.rewind().map_err(|_| "failed to rewind file")?;
-		file.set_len(0).map_err(|_| "failed to truncate file")?;
-
+		self.rewind().map_err(|_| "failed to rewind file")?;
+		self.set_len(0).map_err(|_| "failed to truncate file")?;
+		self.written_to = true;
 		return Ok(());
 	}
 	pub fn trunc_to_cursor(&mut self) -> Result<(), &'static str> {
-		let file = self.deref_mut();
-		let cursor = file.stream_position().map_err(|_| "failed to get cursor position")?;
-		file.set_len(cursor).map_err(|_| "failed to truncate file")?;
+		let cursor = self.stream_position().map_err(|_| "failed to get cursor position")?;
+		self.set_len(cursor).map_err(|_| "failed to truncate file")?;
+		self.written_to = true;
 		return Ok(());
+	}
+
+	pub fn write_trunc<T: AsRef<[u8]>>(&mut self, bytes: T) -> Result<usize, &'static str> {
+		self.rewind().map_err(|_| "failed to rewind")?;
+		let w = self.write(bytes.as_ref()).map_err(|_| "failed to write file")?;
+		let w_u64 = w.try_into().map_err(|_| "failed to convert from usize to u64")?;
+		self.set_len(w_u64).map_err(|_| "failed to truncate file")?;
+		return Ok(w);
 	}
 
 	pub fn path(&self) -> &Path {
